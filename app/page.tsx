@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react';
-import { SendHorizontal, Image, ArrowLeft, X } from 'lucide-react';
+import { SendHorizontal, Image, ArrowLeft, X, Menu } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Chat } from '@/components/Chat';
 import { useChat } from '@/hooks/useChat';
@@ -10,6 +10,8 @@ import { streetModePrompt, originalPrompt } from '@/types/chat';
 
 import ModeSelector from '@/components/ModeSelector';
 import ModelChangeAlert from '@/components/ModelChangeAlert';
+import { useChatHistory } from '@/hooks/useChatHistory';
+import ChatSidebar from '@/components/ChatSidebar';
 
 const convertImageToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -119,9 +121,24 @@ export default function Home() {
   const [isstreetMode, setisstreetMode] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const {
+    chats,
+    activeChatId,
+    isPrivateMode,
+    setIsPrivateMode,
+    createNewChat,
+    selectChat,
+    deleteChat,
+    togglePinChat,
+    clearAllChats,
+    saveMessageUpdate
+  } = useChatHistory();
 
   const { 
     messages, 
+    setMessages,
     isLoading, 
     error, 
     addMessage, 
@@ -134,46 +151,89 @@ export default function Home() {
     systemPrompt: isstreetMode ? streetModePrompt : originalPrompt
   });
 
+  const prevMessagesLength = useRef(0);
 
-// Auto-resize textarea
-useEffect(() => {
-  if (textAreaRef.current) {
-    textAreaRef.current.style.height = 'inherit';
-    textAreaRef.current.style.height = `${textAreaRef.current.scrollHeight}px`;
-  }
-}, [inputValue]);
+  // Sync messages from useChat with the active session in useChatHistory
+  useEffect(() => {
+    if (messages.length === 0) {
+      prevMessagesLength.current = 0;
+      return;
+    }
+    if (messages.length === prevMessagesLength.current) {
+      return;
+    }
+    prevMessagesLength.current = messages.length;
+    saveMessageUpdate(messages, activeChatId);
+  }, [messages, activeChatId, saveMessageUpdate]);
+
+  // Reset active session when private mode changes
+  useEffect(() => {
+    resetChat();
+    setShowChat(false);
+    setInputValue('');
+    setSelectedImage(null);
+    prevMessagesLength.current = 0;
+  }, [isPrivateMode]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textAreaRef.current) {
+      textAreaRef.current.style.height = 'inherit';
+      textAreaRef.current.style.height = `${textAreaRef.current.scrollHeight}px`;
+    }
+  }, [inputValue]);
 
   const Header = ({ 
     onBack, 
     showBackButton = true,
     isstreetMode,
-    setisstreetMode 
+    setisstreetMode,
+    isPrivateMode,
+    setIsPrivateMode,
+    onMenuClick
   }: { 
     onBack?: () => void;
     showBackButton?: boolean;
     isstreetMode: boolean;
     setisstreetMode: (value: boolean) => void;
+    isPrivateMode: boolean;
+    setIsPrivateMode: (value: boolean) => void;
+    onMenuClick: () => void;
   }) => {
     return (
-      <header className="sticky top-0 z-50 bg-background/70 backdrop-blur-md">
+      <header className="sticky top-0 z-50 bg-background/70 backdrop-blur-md border-b border-zinc-800/40">
         <div className="w-full mx-auto">
-          <div className="p-4 flex items-center">
-            {showBackButton && (
+          <div className="p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
               <button 
-                className="p-2 hover:bg-card rounded-lg transition-colors"
-                onClick={onBack}
-                aria-label="Go back"
+                className="p-2 hover:bg-card rounded-lg transition-colors md:hidden"
+                onClick={onMenuClick}
+                aria-label="Open menu"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <Menu className="w-5 h-5 text-foreground" />
               </button>
-            )}
+              
+              {showBackButton && (
+                <button 
+                  className="p-2 hover:bg-card rounded-lg transition-colors"
+                  onClick={onBack}
+                  aria-label="Go back"
+                >
+                  <ArrowLeft className="w-5 h-5 text-foreground" />
+                </button>
+              )}
+            </div>
             
             <div className="flex-1 flex justify-center">
               <ModeSelector 
                 isstreetMode={isstreetMode}
                 setisstreetMode={setisstreetMode}
+                isPrivateMode={isPrivateMode}
+                setIsPrivateMode={setIsPrivateMode}
               />
             </div>
+
+            <div className="w-9 h-9 md:hidden" />
           </div>
         </div>
       </header>
@@ -217,11 +277,31 @@ useEffect(() => {
     }
   };
 
-  const handleBack = () => {
-    setShowChat(false);
+  const handleSelectChat = (id: string) => {
+    selectChat(id, setMessages);
+    setShowChat(true);
+    const chat = chats.find(c => c.id === id);
+    if (chat) {
+      prevMessagesLength.current = chat.messages.length;
+    }
+  };
+
+  const handleNewChat = () => {
+    createNewChat();
     resetChat();
+    setShowChat(false);
     setInputValue('');
     setSelectedImage(null);
+    prevMessagesLength.current = 0;
+  };
+
+  const handleBack = () => {
+    createNewChat();
+    resetChat();
+    setShowChat(false);
+    setInputValue('');
+    setSelectedImage(null);
+    prevMessagesLength.current = 0;
   };
 
   const handleSuggestionClick = async (title: string) => {
@@ -239,168 +319,158 @@ useEffect(() => {
     await addMessage(title);
   };
 
-if (showChat) {
   return (
-    <div className="flex flex-col h-[100dvh]"> 
-      <Header 
-        onBack={handleBack} 
-        showBackButton={true}
-        isstreetMode={isstreetMode}
-        setisstreetMode={setisstreetMode}
+    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
+      {/* Chat Sidebar */}
+      <ChatSidebar
+        chats={chats}
+        activeChatId={activeChatId}
+        isPrivateMode={isPrivateMode}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        onSelectChat={handleSelectChat}
+        onNewChat={handleNewChat}
+        onDeleteChat={deleteChat}
+        onTogglePinChat={togglePinChat}
+        onClearAllChats={clearAllChats}
       />
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto">
-          <Chat 
-            messages={messages}
-            isLoading={isLoading}
-            error={error}
-            addMessage={addMessage}
-            editMessage={editMessage} 
-            regenerateResponse={regenerateResponse}
-            partialResponse={partialResponse}
-            rateLimitError={rateLimitError}
-          />
-        </div>
-      </main>
-    </div>
-  );
-}
 
-return (
-  <div className="min-h-screen bg-background text-foreground">
-    <Header 
-      showBackButton={false}
-      isstreetMode={isstreetMode}
-      setisstreetMode={setisstreetMode}
-    />
-        <ModelChangeAlert />
-
-    <main className="max-w-3xl mx-auto p-4">
-      <div className="mb-16 mt-8">
-        <h1 className="text-4xl font-medium text-center mb-8 text-black dark:text-white">VectorAI</h1>
-        <div className="relative">
-          <div className="relative flex items-center">
-            <button 
-              className="absolute left-3 z-10 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              onClick={handleImageClick}
-            >
-              <Image className="w-5 h-5 text-foreground/40 dark:text-white" />
-            </button>
-
-            <textarea
-              ref={textAreaRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={selectedImage ? "Ask bout this pic" : "Sup, ask anything"}
-              className="w-full py-4 px-14 bg-input rounded-full text-black dark:text-white placeholder-inputtext focus:outline-none resize-none overflow-hidden min-h-[56px] max-h-[200px]"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleStartChat();
-                }
-              }}
-              rows={1}
-            />
-
-            <button 
-              className="absolute right-3 z-10 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              onClick={handleStartChat}
-            >
-              <SendHorizontal className="w-5 h-5 text-foreground cursor-pointer" />
-            </button>
-          </div>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            accept="image/*"
-            onChange={handleImageUpload}
-          />
-        </div>
-        
-        {selectedImage && (
-          <div className="mt-4 relative inline-block">
-            <img 
-              src={selectedImage} 
-              alt="Selected" 
-              className="max-h-40 rounded-lg"
-            />
-            <button
-              onClick={removeSelectedImage}
-              className="absolute top-2 right-2 p-1 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
-            >
-              <X className="w-4 h-4 text-white" />
-            </button>
-          </div>
-        )}
-
-
-
-          {/* <p className="text-center dark:text-zinc-700 text-slate-300 text-md font-medium mt-2">
-            Groc can make mistakes. Verify its outputs.
-          </p> */}
-
-          <p className="text-center dark:text-zinc-700 text-slate-300 text-sm font-medium mt-2">
-          Groc is like xAI's Grok, but way more chill.
-          <br />
-          Important: Groc is 100% unaffiliated with xAI. 
-          </p>
-
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <SuggestionCard 
-            icon={<IconNewspaper className="w-5 h-5" />}
-            title="Tell me today's headlines"
-            onClick={handleSuggestionClick}
-          />
-          <SuggestionCard 
-            icon={<IconGamepad className="w-5 h-5" />}
-            title="Recommend a fantasy RPG game"
-            onClick={handleSuggestionClick}
-          />
-          <SuggestionCard 
-            icon={<IconStock className="w-5 h-5" />}
-            title="How's nvidia stock doing today?"
-            onClick={handleSuggestionClick}
-          />
-      <SuggestionCard 
-          icon={<IconYoutube className="w-5 h-5" />}
-          title="Chat about YouTube videos"
-          onClick={handleSuggestionClick}
-          isYouTube={true}
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+        <Header 
+          onBack={handleBack} 
+          showBackButton={showChat}
+          isstreetMode={isstreetMode}
+          setisstreetMode={setisstreetMode}
+          isPrivateMode={isPrivateMode}
+          setIsPrivateMode={setIsPrivateMode}
+          onMenuClick={() => setIsSidebarOpen(true)}
         />
-      </div>
+        
+        <div className="flex-grow overflow-y-auto">
+          {showChat ? (
+            <main className="h-full">
+              <div className="max-w-3xl mx-auto p-4 pb-32">
+                <Chat 
+                  messages={messages}
+                  isLoading={isLoading}
+                  error={error}
+                  addMessage={addMessage}
+                  editMessage={editMessage} 
+                  regenerateResponse={regenerateResponse}
+                  partialResponse={partialResponse}
+                  rateLimitError={rateLimitError}
+                />
+              </div>
+            </main>
+          ) : (
+            <main className="max-w-3xl mx-auto p-4 pb-24">
+              <ModelChangeAlert />
+              
+              <div className="mb-16 mt-8">
+                <h1 className="text-4xl font-medium text-center mb-8 text-black dark:text-white">AroxAI</h1>
+                <div className="relative">
+                  <div className="relative flex items-center">
+                    <button 
+                      className="absolute left-3 z-10 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                      onClick={handleImageClick}
+                    >
+                      <Image className="w-5 h-5 text-foreground/40 dark:text-white" />
+                    </button>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <ImageCard 
-            title="An underwater library"
-            imageSrc="/underwater.jpeg"
-            onClick={handleImageCardClick}
-          />
-          <ImageCard 
-            title="A robot in a flower field"
-            imageSrc="/robot.jpeg"
-            onClick={handleImageCardClick}
-          />
+                    <textarea
+                      ref={textAreaRef}
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      placeholder={selectedImage ? "Ask bout this pic" : "Sup, ask anything"}
+                      className="w-full py-4 px-14 bg-input rounded-full text-black dark:text-white placeholder-inputtext focus:outline-none resize-none overflow-hidden min-h-[56px] max-h-[200px]"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleStartChat();
+                        }
+                      }}
+                      rows={1}
+                    />
+
+                    <button 
+                      className="absolute right-3 z-10 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                      onClick={handleStartChat}
+                    >
+                      <SendHorizontal className="w-5 h-5 text-foreground cursor-pointer" />
+                    </button>
+                  </div>
+
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                  />
+                </div>
+                
+                {selectedImage && (
+                  <div className="mt-4 relative inline-block">
+                    <img 
+                      src={selectedImage} 
+                      alt="Selected" 
+                      className="max-h-40 rounded-lg"
+                    />
+                    <button
+                      onClick={removeSelectedImage}
+                      className="absolute top-2 right-2 p-1 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
+                    >
+                      <X className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
+                )}
+
+                <p className="text-center dark:text-zinc-700 text-slate-300 text-sm font-medium mt-2">
+                  Was made by CodeWawe
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <SuggestionCard 
+                  icon={<IconNewspaper className="w-5 h-5" />}
+                  title="Tell me today's headlines"
+                  onClick={handleSuggestionClick}
+                />
+                <SuggestionCard 
+                  icon={<IconGamepad className="w-5 h-5" />}
+                  title="Recommend a fantasy RPG game"
+                  onClick={handleSuggestionClick}
+                />
+                <SuggestionCard 
+                  icon={<IconStock className="w-5 h-5" />}
+                  title="How's nvidia stock doing today?"
+                  onClick={handleSuggestionClick}
+                />
+                <SuggestionCard 
+                  icon={<IconYoutube className="w-5 h-5" />}
+                  title="Chat about YouTube videos"
+                  onClick={handleSuggestionClick}
+                  isYouTube={true}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <ImageCard 
+                  title="An underwater library"
+                  imageSrc="/underwater.jpeg"
+                  onClick={handleImageCardClick}
+                />
+                <ImageCard 
+                  title="A robot in a flower field"
+                  imageSrc="/robot.jpeg"
+                  onClick={handleImageCardClick}
+                />
+              </div>
+            </main>
+          )}
         </div>
-
-        <p className="text-center dark:text-zinc-700 text-slate-300 text-md font-medium mb-8">
-          Images are generated with FLUX.1 by Black Forest Labs
-        </p>
-
-        {/* <div className="grid grid-cols-2 gap-4">
-          <NewsCard 
-            title="M4 Mac Mini: Power and Price Debate"
-            meta="Trending now · Technology · 821 posts"
-          />
-          <NewsCard 
-            title="Sam Altman's AGI Prediction for 2025"
-            meta="16 hours ago · Technology · 6K posts"
-          />
-        </div> */}
-      </main>
+      </div>
     </div>
   );
 }

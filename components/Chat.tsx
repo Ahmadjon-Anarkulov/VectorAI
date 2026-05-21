@@ -5,6 +5,7 @@ import { ChatInput } from './ChatInput';
 import { ChatMessage } from './ChatMessage';
 import { Pencil, X } from 'lucide-react';
 import RateLimit from './RateLimit';
+import ThinkingIndicator from './ThinkingIndicator';
 
 interface ChatProps {
   messages: Message[];
@@ -104,8 +105,8 @@ export function Chat({
           />
         )}
         {isLoading && !partialResponse && (
-          <div className="py-4 text-center text-zinc-500 dark:text-zinc-400">
-            Thinking...
+          <div className="py-4">
+            <ThinkingIndicator />
           </div>
         )}
         {error &&(
@@ -115,7 +116,7 @@ export function Chat({
         )}
       </div>
       
-      <div className="fixed bottom-0 left-0 right-0 bg-background">
+      <div className="fixed bottom-0 left-0 md:left-72 right-0 bg-background z-30">
         {editingIndex !== null && (
           <div>
             <div className="max-w-3xl mx-auto">

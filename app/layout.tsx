@@ -3,7 +3,7 @@ import { ThemeProvider } from 'next-themes'
 import { IconGitHub } from '@/components/ui/icons'
 import { Analytics } from "@vercel/analytics/react"
 export const metadata = {
-  title: 'Groc',
+  title: 'AroxAI',
   description: 'This is a clone of the xAI Grok chat interface',
   manifest: '/manifest.json',
   icons: {
@@ -26,7 +26,7 @@ export const metadata = {
 }
 
 const Footer = () => (
-  <footer className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm">
+  <footer className="fixed bottom-0 left-0 md:left-72 right-0 bg-background/80 backdrop-blur-sm z-10">
     <div className="max-w-3xl mx-auto p-2 flex items-center justify-center gap-3">
 
       <a

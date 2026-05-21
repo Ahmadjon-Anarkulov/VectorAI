@@ -68,12 +68,12 @@ export function useChat(options: UseChatOptions = {}) {
     }
   }
 
-  const resetChat = () => {
+  const resetChat = useCallback(() => {
     setMessages([])
     setIsLoading(false)
     setError(null)
     setPartialResponse('')
-  }
+  }, [])
 
   const processLinks = (functionResult: any) => {
     let links = []
@@ -666,6 +666,7 @@ const regenerateResponse = useCallback(async (messageIndex: number) => {
   
   return {
     messages,
+    setMessages,
     isLoading,
     error,
     addMessage,
