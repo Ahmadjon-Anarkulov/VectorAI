@@ -5,10 +5,26 @@ import { SendHorizontal, Image, ArrowLeft, X, Menu } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Chat } from '@/components/Chat';
 import { useChat } from '@/hooks/useChat';
-import { IconGamepad, IconNewspaper, IconStock, IconYoutube } from '../components/ui/icons';
+import { IconGamepad, IconNewspaper, IconStock, IconYoutube, IconGitHub } from '../components/ui/icons';
 import { streetModePrompt, originalPrompt } from '@/types/chat';
 
 import ModeSelector from '@/components/ModeSelector';
+
+const Footer = ({ showChat }: { showChat: boolean }) => (
+  <footer className={`fixed bottom-0 left-0 ${showChat ? 'md:left-72' : ''} right-0 bg-background/80 backdrop-blur-sm z-10`}>
+    <div className="max-w-3xl mx-auto p-2 flex items-center justify-center gap-3">
+      <a
+        href="https://github.com/DatoBHJ/grok-clone"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="p-1.5 rounded-full hover:bg-accent transition-colors"
+      >
+        <IconGitHub className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+      </a>
+      <span className="text-xs text-muted-foreground">Ahmadjon-Anarkulov</span>
+    </div>
+  </footer>
+);
 import ModelChangeAlert from '@/components/ModelChangeAlert';
 import { useChatHistory } from '@/hooks/useChatHistory';
 import ChatSidebar from '@/components/ChatSidebar';
@@ -205,13 +221,15 @@ export default function Home() {
         <div className="w-full mx-auto">
           <div className="p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <button 
-                className="p-2 hover:bg-card rounded-lg transition-colors md:hidden"
-                onClick={onMenuClick}
-                aria-label="Open menu"
-              >
-                <Menu className="w-5 h-5 text-foreground" />
-              </button>
+              {showChat && (
+                <button 
+                  className="p-2 hover:bg-card rounded-lg transition-colors md:hidden"
+                  onClick={onMenuClick}
+                  aria-label="Open menu"
+                >
+                  <Menu className="w-5 h-5 text-foreground" />
+                </button>
+              )}
               
               {showBackButton && (
                 <button 
@@ -327,6 +345,7 @@ export default function Home() {
         activeChatId={activeChatId}
         isPrivateMode={isPrivateMode}
         isOpen={isSidebarOpen}
+        showDesktop={showChat}
         onClose={() => setIsSidebarOpen(false)}
         onSelectChat={handleSelectChat}
         onNewChat={handleNewChat}
@@ -360,6 +379,7 @@ export default function Home() {
                   regenerateResponse={regenerateResponse}
                   partialResponse={partialResponse}
                   rateLimitError={rateLimitError}
+                  hasSidebar={true}
                 />
               </div>
             </main>

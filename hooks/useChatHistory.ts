@@ -1,5 +1,5 @@
 // hooks/useChatHistory.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Message } from '@/types/chat';
 
 export interface ChatSession {
@@ -11,7 +11,7 @@ export interface ChatSession {
   isPinned: boolean;
 }
 
-const LOCAL_STORAGE_KEY = 'vector_ai_chats';
+const LOCAL_STORAGE_KEY = 'aroxai_chats';
 
 const getTitleFromFirstMessage = (messages: Message[]): string => {
   const firstUserMsg = messages.find(m => m.role === 'user');
@@ -44,6 +44,11 @@ export function useChatHistory() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [isPrivateMode, setIsPrivateMode] = useState<boolean>(false);
 
+  const isPrivateModeRef = useRef(isPrivateMode);
+  useEffect(() => {
+    isPrivateModeRef.current = isPrivateMode;
+  }, [isPrivateMode]);
+
   // Load chats from localStorage on mount (only normal chats)
   useEffect(() => {
     try {
@@ -71,12 +76,12 @@ export function useChatHistory() {
 
   // Set the correct list depending on mode
   const updateChatsList = useCallback((updater: (prev: ChatSession[]) => ChatSession[]) => {
-    if (isPrivateMode) {
+    if (isPrivateModeRef.current) {
       setPrivateChats(prev => updater(prev));
     } else {
       setChats(prev => updater(prev));
     }
-  }, [isPrivateMode]);
+  }, []);
 
   // Create a new chat session or update an existing one when messages change
   const saveMessageUpdate = useCallback((messages: Message[], currentActiveId: string | null): string => {
@@ -117,7 +122,7 @@ export function useChatHistory() {
   }, []);
 
   const selectChat = useCallback((id: string, setMessages: (msgs: Message[]) => void) => {
-    const list = isPrivateMode ? privateChats : chats;
+    const list = isPrivateModeRef.current ? privateChats : chats;
     const chat = list.find(c => c.id === id);
     if (chat) {
       setActiveChatId(id);
@@ -127,10 +132,8 @@ export function useChatHistory() {
 
   const deleteChat = useCallback((id: string) => {
     updateChatsList(prev => prev.filter(c => c.id !== id));
-    if (activeChatId === id) {
-      setActiveChatId(null);
-    }
-  }, [activeChatId, updateChatsList]);
+    setActiveChatId(prev => (prev === id ? null : prev));
+  }, [updateChatsList]);
 
   const togglePinChat = useCallback((id: string) => {
     updateChatsList(prev => 

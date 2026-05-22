@@ -25,23 +25,6 @@ export const metadata = {
   ],
 }
 
-const Footer = () => (
-  <footer className="fixed bottom-0 left-0 md:left-72 right-0 bg-background/80 backdrop-blur-sm z-10">
-    <div className="max-w-3xl mx-auto p-2 flex items-center justify-center gap-3">
-
-      <a
-        href="https://github.com/DatoBHJ/grok-clone"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="p-1.5 rounded-full hover:bg-accent transition-colors"
-      >
-        <IconGitHub className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-      </a>
-      <span className="text-xs text-muted-foreground">Ahmadjon-Anarkulov</span>
-    </div>
-  </footer>
-);
-
 export default function RootLayout({
   children,
 }: {
@@ -53,7 +36,6 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <div className="bg-background text-foreground min-h-screen">
             {children}
-            <Footer />
           </div>
         </ThemeProvider>
         <Analytics />

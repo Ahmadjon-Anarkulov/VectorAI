@@ -16,6 +16,7 @@ interface ChatProps {
   regenerateResponse: (index: number) => Promise<void>;
   partialResponse: string;
   rateLimitError: boolean;
+  hasSidebar?: boolean;
 }
 
 export function Chat({ 
@@ -26,7 +27,8 @@ export function Chat({
   editMessage,
   regenerateResponse,
   partialResponse,
-  rateLimitError 
+  rateLimitError,
+  hasSidebar = false,
 }: ChatProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingContent, setEditingContent] = useState('');
@@ -81,11 +83,12 @@ export function Chat({
     return typeof content === 'string' ? content : content.text;
   };
   
+  const sidebarOffset = hasSidebar ? 'md:left-72' : '';
+
   return (
     <div className="relative h-full">
       {rateLimitError && <RateLimit />}
       
-      {/* 메시지 영역: 하단 여백을 margin으로 변경 */}
       <div className="mb-32"> 
         {messages.map((message, index) => (
           <ChatMessage
@@ -116,7 +119,7 @@ export function Chat({
         )}
       </div>
       
-      <div className="fixed bottom-0 left-0 md:left-72 right-0 bg-background z-30">
+      <div className={`fixed bottom-0 left-0 ${sidebarOffset} right-0 bg-background z-30`}>
         {editingIndex !== null && (
           <div>
             <div className="max-w-3xl mx-auto">

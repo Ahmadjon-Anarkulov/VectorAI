@@ -8,6 +8,7 @@ interface ChatSidebarProps {
   activeChatId: string | null;
   isPrivateMode: boolean;
   isOpen: boolean;
+  showDesktop: boolean;
   onClose: () => void;
   onSelectChat: (id: string) => void;
   onNewChat: () => void;
@@ -41,6 +42,7 @@ export default function ChatSidebar({
   activeChatId,
   isPrivateMode,
   isOpen,
+  showDesktop,
   onClose,
   onSelectChat,
   onNewChat,
@@ -70,7 +72,7 @@ export default function ChatSidebar({
       <div className="p-4 flex items-center justify-between border-b border-zinc-800/60">
         <div className="flex items-center gap-2">
           <span className="font-bold text-lg bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent tracking-wide">
-            VectorAI
+            AroxAI
           </span>
           {isPrivateMode && (
             <span className="flex items-center gap-1 text-[10px] bg-purple-950/80 text-purple-400 border border-purple-800/50 px-2 py-0.5 rounded-full font-semibold animate-pulse">
@@ -209,10 +211,12 @@ export default function ChatSidebar({
         <SidebarContent />
       </div>
 
-      {/* Desktop Sidebar (Persistent) */}
-      <div className="hidden md:block w-72 flex-shrink-0 h-screen overflow-hidden">
-        <SidebarContent />
-      </div>
+      {/* Desktop Sidebar — only visible when showDesktop is true */}
+      {showDesktop && (
+        <div className="hidden md:block w-72 flex-shrink-0 h-screen overflow-hidden">
+          <SidebarContent />
+        </div>
+      )}
     </>
   );
 }
